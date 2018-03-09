@@ -1,0 +1,9 @@
+# depslib dependency file v1.0
+1517973539 source:/home/yan/ayeworkspace/SmartCam/ce_io.cpp
+	"ce_io.h"
+
+1517973478 /home/yan/ayeworkspace/SmartCam/ce_io.h
+	<string>
+	<fstream>
+	<sstream>
+
