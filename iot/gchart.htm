@@ -1,0 +1,37 @@
+<html>
+  <head>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['corechart']});
+      google.charts.setOnLoadCallback(drawChart);
+
+      function drawChart() {
+        var data = google.visualization.arrayToDataTable([
+['Weekday',  'Sensor1','Sensor2'],
+['Sunday',6,3],
+['Monday',2,4],
+['Tuesday',5,7],
+['Wednesday',4,1],
+['Thursday',2,5],
+['Friday',6,4],
+['Saturday',8,2]
+        ]);
+
+        var options = {
+          title: 'Daily sensor values',
+          vAxis: {title: 'Accumulated value'},
+          isStacked: true
+        };
+
+        var chart = new google.visualization.SteppedAreaChart(document.getElementById('chart_div'));
+        //var chart = new google.visualization.BarChart(document.getElementById('chart_div'));
+
+        chart.draw(data, options);
+      }
+    </script>
+  </head>
+  <body>
+    <div id="chart_div" style="width: 900px; height: 500px;"></div>
+  </body>
+</html>
+

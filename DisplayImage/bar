@@ -1,8 +1,0 @@
-#!/bin/bash
-#Build and run
-echo "Building"
-g++ DisplayImage.cpp `pkg-config --cflags --libs opencv` -o DisplayImage
-echo "Running"
-gksudo ./DisplayImage
-
-
