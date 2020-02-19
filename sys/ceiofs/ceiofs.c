@@ -1,3 +1,11 @@
+/////////////////////////////////////////////////////////////////////////////
+// Name:         ceiofs.c
+// Description:  IO sysfs device driver loadable kernel module
+// Author:       Yan Naing Aye
+// Date:         2020 Feb 13
+// Ref: https://lwn.net/Kernel/LDD3/
+/////////////////////////////////////////////////////////////////////////////
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -101,6 +109,8 @@ static int __init ceiofs_init(void)
     gpio_request(pinOut,"sysfs");
     gpio_direction_output(pinOut,false);
     gpio_export(pinOut,false);
+    
+    spin_lock_init(&tightLoop);
     
     task = kthread_run(pulses_task,NULL,"Pulsing_thread");
     if(IS_ERR(task)){
