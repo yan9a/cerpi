@@ -5,7 +5,7 @@
 #include <linux/kobject.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
-
+#include <linux/time.h>
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Cool Emerald");
 MODULE_DESCRIPTION("GPIO driver");
@@ -13,6 +13,7 @@ MODULE_VERSION("1.0");
 
 static unsigned int pinOut = 4;
 static bool pulseEn = 0;
+static spinlock_t tightLoop;
 
 static ssize_t pulsing_store(struct kobject *kobj, struct kobj_attribute *attr,
     const char *buf, size_t count)
@@ -47,19 +48,33 @@ static struct task_struct *task;
 
 static int pulses_task(void *arg)
 {
+    unsigned long flags;
+    ktime_t t0, tn;
+    uint64_t intervalns;
+    uint64_t pulsewidthns = 50000; // pulse width tick interval in ns
     int i=0;
     printk(KERN_INFO "CEIO: Thread has started.\n");
     while(!kthread_should_stop()){
-        set_current_state(TASK_RUNNING);
-        if(pulseEn){
-            for(i=0;i<200;i++){
+        // enter high priority pulses loop
+        spin_lock_irqsave(&tightLoop, flags);
+        //udelay(50);
+        t0 = ktime_get(); 
+        i = 0;
+        while(pulseEn){
+            tn = ktime_get();
+            intervalns = ktime_to_ns(ktime_sub(tn, t0));
+            if( intervalns >= pulsewidthns ) {
+                t0 = tn;
                 gpio_set_value(pinOut,i%2);
-                udelay(50);
+                i++;                
             }
-            pulseEn = 0;
-            gpio_set_value(pinOut,0);
+            if(i>=200) {
+                pulseEn = 0;
+                gpio_set_value(pinOut,0);
+            }            
         }
-        set_current_state(TASK_INTERRUPTIBLE);
+        spin_unlock_irqrestore(&tightLoop, flags);
+        // exit high priority mag pulses loop
         msleep(50);
     }
     printk(KERN_INFO "CEIO: Thread has stopped.\n");

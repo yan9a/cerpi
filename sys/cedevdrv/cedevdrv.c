@@ -5,6 +5,7 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
+#include <linux/slab.h>
 #define DEVICE_NAME "cedevdrv"
 #define CLASS_NAME "cedev"
 
@@ -34,7 +35,7 @@ static struct file_operations fops = {
     .write   = device_write
 };
 
-static char mes[256]={0};
+static char *mes;
 static size_t meslen = 0;
 
 static DEFINE_MUTEX(cedevmutex);
@@ -43,6 +44,9 @@ static int __init cedevdrv_init(void)
 {
   printk(KERN_INFO "CEDRV: init %s\n",cedrvarg);
   
+  // memory allocation 
+  mes = kmalloc(sizeof(char)*256,GFP_KERNEL);
+
   // register char device
   majorNumber = register_chrdev(0,DEVICE_NAME, &fops);
   if(majorNumber<0) {
@@ -78,6 +82,10 @@ static void __exit cedevdrv_exit(void)
   class_unregister(cedevdrvClass);
   class_destroy(cedevdrvClass);
   unregister_chrdev(majorNumber,DEVICE_NAME);
+
+  // free memory
+  kfree(mes);
+
   printk(KERN_INFO "CEDRV: exit %s\n",cedrvarg);
 }
 
@@ -100,29 +108,36 @@ static int device_release(struct inode *inodep, struct file *filep)
 
 static ssize_t device_write(struct file *filep, const char *buffer, size_t length, loff_t * offset)
 {
-    int i=0;
-    for(i=0;i<length;i++) mes[i]=buffer[i];
-    meslen = length;
-    printk(KERN_INFO "CEDRV: received %zu bytes\n",length);
-    return length;
+    size_t bytesToCopy = length >= 255 ? 255: length;
+    size_t bytesNotCopied = 0;
+    bytesNotCopied = copy_from_user(mes, buffer, bytesToCopy);
+    meslen = bytesToCopy - bytesNotCopied;
+    printk(KERN_INFO "CEDRV: received %zu bytes\n",meslen);
+    if(bytesNotCopied){
+      printk(KERN_INFO "CEDRV: Failed to receive %zu characters",bytesNotCopied);
+      return -EFAULT;
+    }
+    return bytesToCopy;
 }
 
 static ssize_t device_read(struct file *filep,  char *buffer,  
     size_t length, loff_t * offset)
 {
-    int err_count=0;
-    int sent_count=0;
-    err_count = copy_to_user(buffer,mes,meslen);
-    if(err_count==0){
+    size_t sent_count=0;
+    size_t bytesToCopy = length >= meslen ? meslen : length;
+    size_t bytesNotCopied = 0;
+    if(!bytesToCopy) return 0;
+    bytesNotCopied = copy_to_user(buffer,mes,bytesToCopy);
+    sent_count = bytesToCopy - bytesNotCopied;
+    if(sent_count){
         printk(KERN_INFO "CEDRV: sent %zu bytes\n",meslen);
-        sent_count=meslen;
-        meslen=0;//reset len
-        return sent_count;
     }
-    else {
-        printk(KERN_INFO "CEDRV: error in sending %d bytes\n",err_count);
-    }
-    return -EFAULT;
+    if(bytesNotCopied){
+        printk(KERN_INFO "CEDRV: error in sending %d bytes\n",bytesNotCopied);
+        return -EFAULT;
+    }    
+    meslen=0;//reset len
+    return bytesToCopy;
 }
 
 module_init(cedevdrv_init);
