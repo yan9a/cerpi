@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 2.8)
+project( wxjsontest )
+find_package(wxWidgets COMPONENTS core net base REQUIRED)
+include("${wxWidgets_USE_FILE}")
+include_directories(./wx)
+add_executable( wxjsontest wxjsontest.cpp jsonreader.cpp jsonval.cpp jsonwriter.cpp )
+target_link_libraries(${PROJECT_NAME} ${wxWidgets_LIBRARIES})

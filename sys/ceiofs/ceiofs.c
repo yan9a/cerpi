@@ -113,6 +113,7 @@ static int __init ceiofs_init(void)
     spin_lock_init(&tightLoop);
     
     task = kthread_run(pulses_task,NULL,"Pulsing_thread");
+    kthread_bind(task, 2);
     if(IS_ERR(task)){
         printk(KERN_ALERT "CEIO: error in running thread\n");
         return PTR_ERR(task);
