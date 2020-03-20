@@ -11,7 +11,6 @@
 using namespace std;
 
 typedef struct {
-	uint8_t feature;
 	uint8_t ao;
 	uint8_t ai[4];	
 } IOAnalog;

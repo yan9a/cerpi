@@ -141,7 +141,7 @@ static ssize_t device_read(struct file *filep,  char *buffer,
         printk(KERN_INFO "CEDRV: sent %zu bytes\n",meslen);
     }
     if(bytesNotCopied){
-        printk(KERN_INFO "CEDRV: error in sending %d bytes\n",bytesNotCopied);
+        printk(KERN_INFO "CEDRV: error in sending %zu bytes\n",bytesNotCopied);
         return -EFAULT;
     }    
     meslen=0;//reset len
