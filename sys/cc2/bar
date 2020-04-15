@@ -1,0 +1,6 @@
+cd build
+# rm -r ./*
+cmake -D CMAKE_TOOLCHAIN_FILE=../pi.cmake ..
+make
+./cc2
+cd ..
