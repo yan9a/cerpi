@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.9)
+project(getClient)
+find_package(cpprestsdk REQUIRED)
+add_executable(getClient getClient.cpp)
+target_link_libraries(getClient PRIVATE cpprestsdk::cpprest)
