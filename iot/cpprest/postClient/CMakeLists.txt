@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.9)
+project(postClient)
+find_package(cpprestsdk REQUIRED)
+add_executable(postClient postClient.cpp)
+target_link_libraries(postClient PRIVATE cpprestsdk::cpprest)

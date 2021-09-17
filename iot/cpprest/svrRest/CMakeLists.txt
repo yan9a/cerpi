@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.9)
+project(svrRest)
+find_package(cpprestsdk REQUIRED)
+add_executable(svrRest svrRest.cpp)
+target_link_libraries(svrRest PRIVATE cpprestsdk::cpprest)
