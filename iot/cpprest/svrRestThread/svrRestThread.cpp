@@ -31,15 +31,17 @@ class MyApp : public wxAppConsole
 {
   public:
     virtual bool OnInit();
-	void OnWorkerEvent(wxThreadEvent& event);
-	void CreateListener(std::string hostval, std::string pathval, web::http::method methodval);
+	void OnHttpEvent(wxThreadEvent& event);
+	void CreateListener(const std::string& hostval, const std::string& pathval,
+		const web::http::method& methodval, std::function<void(web::http::http_request)> handler);
 };
 
 class MyWorkerThread : public wxThread
 {
 public:
 	// For console app, use wxAppConsole* instead of MyFrame*
-	MyWorkerThread(wxAppConsole* app, std::string hostval, std::string pathval, web::http::method methodval);
+	MyWorkerThread(wxAppConsole* app, const std::string& hostval, const std::string& pathval,
+		const web::http::method& methodval, std::function<void(web::http::http_request)> handler);
 	// thread execution starts here
 	virtual void* Entry();
 
@@ -53,6 +55,7 @@ private:
 	std::string _host;
 	std::string _path;
     web::http::method _method;
+	std::function<void(web::http::http_request)> _handler;
 };
 wxAppConsole* MyWorkerThread::_app = nullptr;
 
@@ -60,17 +63,23 @@ IMPLEMENT_APP(MyApp)
 
 bool MyApp::OnInit()
 {
-	Connect(ID_THREAD, wxEVT_THREAD, wxThreadEventHandler(MyApp::OnWorkerEvent));
-	cout<<("Hello svr rest thread")<<endl;
-    this->CreateListener("http://localhost:8080", "/cpprest/svrpost", methods::POST);
-	this->CreateListener("http://localhost:8080", "/cpprest/svrget", methods::GET);
-    
+	Connect(ID_THREAD, wxEVT_THREAD, wxThreadEventHandler(MyApp::OnHttpEvent));
+	cout<<("Starting multithreaded C++ REST SDK server ... \n")<<endl;
+	this->CreateListener("http://localhost:8080", "/cpprest/sg", methods::GET, MyWorkerThread::handle_get);
+	this->CreateListener("http://localhost:8080", "/cpprest/sp", methods::POST, MyWorkerThread::handle_post);
     return true;
 }
 
-void MyApp::CreateListener(std::string hostval, std::string pathval, web::http::method methodval)
+void MyApp::OnHttpEvent(wxThreadEvent& event)
 {
-	MyWorkerThread* thread = new MyWorkerThread(this, hostval, pathval, methodval);
+	string str = event.GetString().ToStdString();
+	cout << str << endl;
+}
+
+void MyApp::CreateListener(const std::string& hostval, const std::string& pathval,
+	const web::http::method& methodval, std::function<void(web::http::http_request)> handler)
+{
+	MyWorkerThread* thread = new MyWorkerThread(this, hostval, pathval, methodval, handler);
 	if (thread->Create() != wxTHREAD_NO_ERROR)
 	{
 		//printf("Can't create thread!");
@@ -78,10 +87,12 @@ void MyApp::CreateListener(std::string hostval, std::string pathval, web::http::
 	}
 	thread->Run();
 }
+
 // --------------------------------------------------------
 // MyWorkerThread
-MyWorkerThread::MyWorkerThread(wxAppConsole* app, std::string hostval, std::string pathval, web::http::method methodval)
-	: wxThread(), _host(hostval), _path(pathval), _method(methodval)
+MyWorkerThread::MyWorkerThread(wxAppConsole* app, const std::string &hostval, const std::string &pathval, 
+	const web::http::method &methodval, std::function<void (web::http::http_request)> handler)
+	: wxThread(), _host(hostval), _path(pathval), _method(methodval), _handler(handler)
 {
 	_app = app;
 }
@@ -101,16 +112,7 @@ wxThread::ExitCode MyWorkerThread::Entry()
 #endif // !CE_WINDOWS
 	web::http::experimental::listener::http_listener 
  		listener(uhost+upath);
-    if (_method == methods::GET) {
-        listener.support(_method, handle_get);
-    }
-    else {
-        listener.support(_method, handle_post);
-    }
-  //  listener.support(methods::GET, handle_get);
- 	//listener.support(methods::POST,handle_post);
- 	//listener.support(methods::PUT,handle_put);
- 	//listener.support(methods::DEL,handle_del);
+    listener.support(_method, _handler);
  	try{
  		listener.open()
  			.then([&listener](){
@@ -125,71 +127,36 @@ wxThread::ExitCode MyWorkerThread::Entry()
 	return NULL;
 }
 
-void MyApp::OnWorkerEvent(wxThreadEvent& event)
-{
-	string str = event.GetString().ToStdString();
-	cout << str << endl;
+void MyWorkerThread::handle_get(http_request message) {
+	//cout << "Handle get: " << message.to_string() << endl;
+	json::value jsonObject;
+	jsonObject[U("x")] = json::value::string(U("Getx"));
+	jsonObject[U("y")] = json::value::string(U("Gety"));
+	message.reply(status_codes::OK, jsonObject);
+	string rv = "Rx Get";
+	wxThreadEvent event(wxEVT_THREAD, ID_THREAD);
+	event.SetString(rv);
+	wxQueueEvent(_app, event.Clone());
 }
 
- void MyWorkerThread::handle_get(http_request message){
- 	cout<<"Handle get: "<<message.to_string()<<endl;
- 	json::value jsonObject;
- 	jsonObject[U("x")] = json::value::string(U("GetA"));
- 	jsonObject[U("y")] = json::value::string(U("GetB"));
- 	message.reply(status_codes::OK,jsonObject);
-    string rv;
-    rv = "get entry";
-    wxThreadEvent event(wxEVT_THREAD, ID_THREAD);
-    event.SetString(rv);
-    wxQueueEvent(_app, event.Clone());
- }
-
- void MyWorkerThread::handle_post(http_request message){
- 	cout<<"Handle post: "<<message.to_string()<<endl;
- 	json::value jsonObject;
- 	try{
- 		message.extract_json()
- 			.then([&jsonObject](json::value jo){
- 				cout<<"Val:"<<jo.serialize() << endl;
- 				jsonObject = jo;
- 			})
- 			.wait();
- 	}
- 	catch (const std::exception & e) {
- 		printf("Error exception:%s\n", e.what());
- 	}
- 	jsonObject[U("cherry")] = json::value::string(U("C"));
- 	message.reply(status_codes::OK,jsonObject);
- }
-
-// void handle_put(http_request message){
-// 	cout<<"Handle post: "<<message.to_string()<<endl;
-// 	string rep = U("PUT handled");
-// 	message.reply(status_codes::OK,rep);
-// }
-
-// void handle_del(http_request message){
-// 	cout<<"Handle delete: "<<message.to_string()<<endl;
-// 	string rep = U("DELETE handled");
-// 	message.reply(status_codes::OK,rep);
-// }
-
-// int main(int argc, char* argv[])
-// {
-// 	web::http::experimental::listener::http_listener 
-// 		listener(U("http://localhost:8080/cpprest/svrRest"));
-// 	listener.support(methods::GET,handle_get);
-// 	listener.support(methods::POST,handle_post);
-// 	listener.support(methods::PUT,handle_put);
-// 	listener.support(methods::DEL,handle_del);
-// 	try{
-// 		listener.open()
-// 			.then([&listener](){printf("\nStarting svrRest\n");})
-// 			.wait();
-// 		while(true);
-// 	}
-// 	catch (const std::exception & e) {
-// 		printf("Error exception:%s\n", e.what());
-// 	}
-// 	return 0;
-// }
+void MyWorkerThread::handle_post(http_request message) {
+	//cout << "Handle post: " << message.to_string() << endl;
+	json::value jsonObject;
+	try {
+		message.extract_json()
+			.then([&jsonObject](json::value jo) {
+			//cout << "Val:" << jo.serialize() << endl;
+			jsonObject = jo;
+				})
+			.wait();
+	}
+	catch (const std::exception & e) {
+		printf("Error exception:%s\n", e.what());
+	}
+	jsonObject[U("z")] = json::value::string(U("Postz"));
+	message.reply(status_codes::OK, jsonObject);
+	string rv = "Rx Post";
+	wxThreadEvent event(wxEVT_THREAD, ID_THREAD);
+	event.SetString(rv);
+	wxQueueEvent(_app, event.Clone());
+}
