@@ -2,8 +2,8 @@
 // Author: Yan Naing Aye
 // Date: 2020-Oct-06
 // References
+//  http://cool-emerald.blogspot.com/2020/10/c-rest-sdk.html
 //  https://github.com/Microsoft/cpprestsdk/wiki/Getting-Started-Tutorial
-//  http://www.atakansarioglu.com/easy-quick-start-cplusplus-rest-client-example-cpprest-tutorial/
 //  https://github.com/Microsoft/cpprestsdk/wiki/Programming-with-Tasks
 //  https://github.com/Meenapintu/Restweb
 
@@ -60,7 +60,8 @@ void handle_del(http_request message){
 
 int main(int argc, char* argv[])
 {
-	web::http::experimental::listener::http_listener listener(U("http://localhost:8080/cpprestsdk/cpprest/svrRest"));
+	web::http::experimental::listener::http_listener 
+		listener(U("http://localhost:8080/cpprest/svrRest"));
 	listener.support(methods::GET,handle_get);
 	listener.support(methods::POST,handle_post);
 	listener.support(methods::PUT,handle_put);

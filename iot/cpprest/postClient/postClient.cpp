@@ -2,8 +2,10 @@
 // Author: Yan Naing Aye
 // Date: 2020-Oct-01
 // References
+//  http://cool-emerald.blogspot.com/2020/10/c-rest-sdk.html
 //  https://github.com/Microsoft/cpprestsdk/wiki/Getting-Started-Tutorial
-//  http://www.atakansarioglu.com/easy-quick-start-cplusplus-rest-client-example-cpprest-tutorial/
+//  http://www.atakansarioglu.com/
+//    easy-quick-start-cplusplus-rest-client-example-cpprest-tutorial/
 //  https://github.com/Microsoft/cpprestsdk/wiki/Programming-with-Tasks
 
 #include <iostream>
@@ -12,11 +14,11 @@
 #include <cpprest/uri.h>
 #include <cpprest/json.h>
 
-using namespace utility;                    // Common utilities like string conversions
-using namespace web;                        // Common features like URIs.
-using namespace web::http;                  // Common HTTP functionality
-using namespace web::http::client;          // HTTP client features
-using namespace concurrency::streams;       // Asynchronous streams
+using namespace utility; // Common utilities like string conversions
+using namespace web; // Common features like URIs.
+using namespace web::http; // Common HTTP functionality
+using namespace web::http::client; // HTTP client features
+using namespace concurrency::streams; // Asynchronous streams
 using namespace std;
 
 int main(int argc, char* argv[])
@@ -26,18 +28,20 @@ int main(int argc, char* argv[])
 	jsonObject[U("banana")] = json::value::string(U("B"));
 
 	// Make a POST request.
-	// auto requestJson = http_client(U("http://localhost:80"))
-		// .request(methods::POST, uri_builder(U("cpprestsdk/cpprest/postClient/j2.php")).to_string(), 
-	auto requestJson = http_client(U("http://localhost:8080"))
-		.request(methods::POST, uri_builder(U("/cpprestsdk/cpprest/svrRest")).to_string(),
+	// auto requestJson = http_client(U("http://localhost:8080"))
+	// 	.request(methods::POST, uri_builder(U("/cpprest/svrRest")).to_string(),	
+	auto requestJson = http_client(U("http://localhost"))
+		.request(methods::POST, uri_builder(U("/j2.php")).to_string(), 	
 			jsonObject.serialize(), U("application/json"))
 		// Get the response.
 		.then([](http_response response) {
 				// Check the status code.
 				if (response.status_code() != 200) {
-					throw std::runtime_error("Returned " + std::to_string(response.status_code()));
+					throw std::runtime_error("Returned " + 
+					  std::to_string(response.status_code()));
 				}
-				std::cout << "Returned " + std::to_string(response.status_code())<<endl;
+				std::cout << "Returned " + 
+					std::to_string(response.status_code())<<endl;
 				// Convert the response body to JSON object.
 				return response.extract_json();
 		})

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(getClient)
+project(GUI_Client)
 
 # for RPi
 # set ( CMAKE_PREFIX_PATH /usr/lib/arm-linux-gnueabihf/cmake/ )
@@ -10,8 +10,11 @@ project(getClient)
 # find_package(Boost COMPONENTS filesystem system REQUIRED)
 
 find_package(cpprestsdk REQUIRED)
-add_executable(getClient getClient.cpp)
-target_link_libraries(getClient 
+find_package(wxWidgets COMPONENTS core net base REQUIRED)
+include("${wxWidgets_USE_FILE}")
+add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)
+target_link_libraries(${PROJECT_NAME} 
+ ${wxWidgets_LIBRARIES}
  cpprestsdk::cpprest 
  # ${Boost_SYSTEM_LIBRARY}
  )
