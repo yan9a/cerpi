@@ -31,33 +31,33 @@ class MyApp : public wxAppConsole
 {
   public:
     virtual bool OnInit();
-	void OnHttpEvent(wxThreadEvent& event);
-	void CreateListener(const std::string& hostval, const std::string& pathval,
-		const web::http::method& methodval, std::function<void(web::http::http_request)> handler);
+	void OnHttpEvent(wxThreadEvent& event);	
 };
 
-class MyWorkerThread : public wxThread
+class MyRestApi : public wxThread
 {
 public:
 	// For console app, use wxAppConsole* instead of MyFrame*
-	MyWorkerThread(wxAppConsole* app, const std::string& hostval, const std::string& pathval,
+	MyRestApi(const std::string& hostval, const std::string& pathval,
 		const web::http::method& methodval, std::function<void(web::http::http_request)> handler);
-	// thread execution starts here
-	virtual void* Entry();
-
-	// called when the thread exits - whether it terminates normally or is
-	// stopped with Delete() (but not when it is Kill()ed!)
-	virtual void OnExit();
-	static void handle_get(http_request message);
-	static void handle_post(http_request message);
+	static void CreateRestApi(wxAppConsole* app);
 private:
 	static wxAppConsole* _app;
 	std::string _host;
 	std::string _path;
     web::http::method _method;
 	std::function<void(web::http::http_request)> _handler;
+	// thread execution starts here
+	virtual void* Entry();
+	// called when the thread exits - whether it terminates normally or is
+	// stopped with Delete() (but not when it is Kill()ed!)
+	virtual void OnExit();
+	static void handle_get(http_request message);
+	static void handle_post(http_request message);
+	static void CreateListener(const std::string& hostval, const std::string& pathval,
+		const web::http::method& methodval, std::function<void(web::http::http_request)> handler);
 };
-wxAppConsole* MyWorkerThread::_app = nullptr;
+wxAppConsole* MyRestApi::_app = nullptr;
 
 IMPLEMENT_APP(MyApp)
 
@@ -65,8 +65,7 @@ bool MyApp::OnInit()
 {
 	Connect(ID_THREAD, wxEVT_THREAD, wxThreadEventHandler(MyApp::OnHttpEvent));
 	cout<<("Starting multithreaded C++ REST SDK server ... \n")<<endl;
-	this->CreateListener("http://localhost:8080", "/cpprest/sg", methods::GET, MyWorkerThread::handle_get);
-	this->CreateListener("http://localhost:8080", "/cpprest/sp", methods::POST, MyWorkerThread::handle_post);
+	MyRestApi::CreateRestApi(this);
     return true;
 }
 
@@ -76,32 +75,20 @@ void MyApp::OnHttpEvent(wxThreadEvent& event)
 	cout << str << endl;
 }
 
-void MyApp::CreateListener(const std::string& hostval, const std::string& pathval,
-	const web::http::method& methodval, std::function<void(web::http::http_request)> handler)
-{
-	MyWorkerThread* thread = new MyWorkerThread(this, hostval, pathval, methodval, handler);
-	if (thread->Create() != wxTHREAD_NO_ERROR)
-	{
-		//printf("Can't create thread!");
-		return;
-	}
-	thread->Run();
-}
-
 // --------------------------------------------------------
-// MyWorkerThread
-MyWorkerThread::MyWorkerThread(wxAppConsole* app, const std::string &hostval, const std::string &pathval, 
+// MyRestApi
+MyRestApi::MyRestApi(const std::string &hostval, const std::string &pathval, 
 	const web::http::method &methodval, std::function<void (web::http::http_request)> handler)
 	: wxThread(), _host(hostval), _path(pathval), _method(methodval), _handler(handler)
 {
-	_app = app;
+	
 }
 
-void MyWorkerThread::OnExit()
+void MyRestApi::OnExit()
 {
 }
 
-wxThread::ExitCode MyWorkerThread::Entry()
+wxThread::ExitCode MyRestApi::Entry()
 {
 #ifndef CEWIN //CE_WINDOWS
     string uhost = _host;
@@ -127,7 +114,26 @@ wxThread::ExitCode MyWorkerThread::Entry()
 	return NULL;
 }
 
-void MyWorkerThread::handle_get(http_request message) {
+void MyRestApi::CreateListener(const std::string& hostval, const std::string& pathval,
+	const web::http::method& methodval, std::function<void(web::http::http_request)> handler)
+{
+	MyRestApi* thread = new MyRestApi(hostval, pathval, methodval, handler);
+	if (thread->Create() != wxTHREAD_NO_ERROR)
+	{
+		//printf("Can't create thread!");
+		return;
+	}
+	thread->Run();
+}
+
+void MyRestApi::CreateRestApi(wxAppConsole* app)
+{
+	_app = app;
+	MyRestApi::CreateListener("http://localhost:8080", "/cpprest/sg", methods::GET, MyRestApi::handle_get);
+	MyRestApi::CreateListener("http://localhost:8080", "/cpprest/sp", methods::POST, MyRestApi::handle_post);
+}
+
+void MyRestApi::handle_get(http_request message) {
 	//cout << "Handle get: " << message.to_string() << endl;
 	json::value jsonObject;
 	jsonObject[U("x")] = json::value::string(U("Getx"));
@@ -139,7 +145,7 @@ void MyWorkerThread::handle_get(http_request message) {
 	wxQueueEvent(_app, event.Clone());
 }
 
-void MyWorkerThread::handle_post(http_request message) {
+void MyRestApi::handle_post(http_request message) {
 	//cout << "Handle post: " << message.to_string() << endl;
 	json::value jsonObject;
 	try {
